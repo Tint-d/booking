@@ -1,0 +1,19 @@
+{
+    "eslint.workingDirectories": [
+      {
+        "mode": "auto"
+      }
+    ],
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.fixAll.eslint": "explicit"
+    },
+    "typescript.preferences.organizeImports": true,
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll.eslint": "explicit"
+      }
+    }
+  }
