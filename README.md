@@ -1,3 +1,30 @@
+# Meeting Room Booking System
+
+This repository contains a small meeting room booking system with a NestJS backend and a React/Vite frontend.
+
+## Time handling & booking rules
+
+- **Time format**: All booking times are sent and returned as ISO 8601 datetimes (for example, `2026-02-25T10:00:00Z`).
+- **Timezone**: Times are stored and compared in UTC on the server.
+- **Overlap logic**:
+  - `startTime` must be strictly **before** `endTime`.
+  - Back‑to‑back bookings (one booking ending exactly when the next begins) are **allowed**.
+  - Any other overlap (identical ranges, partial overlaps, or one range fully inside another) is **rejected**.
+
+## Why Turborepo & NestJS
+
+- **Turborepo (monorepo tooling)**  
+  - Keeps **backend and frontend in a single repo**, which makes it easier to share types and coordinate changes.  
+  - Gives **fast, incremental builds** and clear task pipelines (`build`, `lint`, `test`) for each app.  
+  - Matches real‑world setups where teams manage multiple services from one monorepo.
+
+- **NestJS (backend framework)**  
+  - Provides a **structured, modular architecture** (modules, controllers, services) that fits an API with users, bookings, and role‑based permissions.  
+  - Has **first‑class TypeScript support** and good patterns for validation, guards, and dependency injection, which keeps the permission rules and booking logic easy to test and extend.  
+  - Integrates well with common NodeJS tooling and makes it straightforward to expose REST endpoints required by the assignment.
+
+---
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.

@@ -8,21 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCurrentUser } from "@/contexts/current-user";
 import { useTheme } from "@/contexts/theme";
-import type { User } from "@/lib/api";
 import { Calendar, LogOut, Moon, Sun, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-export function Header({ users = [] }: { users: User[] }) {
+export function Header() {
   const { user, setUser, isAdmin } = useCurrentUser();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -39,7 +31,11 @@ export function Header({ users = [] }: { users: User[] }) {
         <nav className="flex items-center gap-1">
           <Link
             to="/"
-            className="text-foreground hover:text-foreground/80 flex items-center gap-2 px-3 py-2 text-sm font-medium"
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium hover:text-foreground/80 ${
+              location.pathname === "/"
+                ? "text-foreground"
+                : "text-muted-foreground"
+            }`}
           >
             <Calendar className="size-4" />
             Bookings
@@ -75,33 +71,12 @@ export function Header({ users = [] }: { users: User[] }) {
               <Moon className="size-4" />
             )}
           </Button>
-          {isAdmin ? (
-            <Select
-              value={user?.id ?? ""}
-              onValueChange={(id) => {
-                const u = users.find((x) => x.id === id) ?? null;
-                setUser(u ?? null);
-              }}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select user" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
             <div
               className="border-input bg-background flex h-9 w-[200px] items-center rounded-md border px-3 py-2 text-sm"
               title={user?.name}
             >
               <span className="truncate">{user?.name ?? "—"}</span>
             </div>
-          )}
           {user && <Badge variant="secondary">{user.role}</Badge>}
           <Button variant="ghost" size="sm" onClick={() => setLogoutOpen(true)}>
             <LogOut className="size-4" />
