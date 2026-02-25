@@ -23,6 +23,24 @@ This repository contains a small meeting room booking system with a NestJS backe
   - Has **first‑class TypeScript support** and good patterns for validation, guards, and dependency injection, which keeps the permission rules and booking logic easy to test and extend.  
   - Integrates well with common NodeJS tooling and makes it straightforward to expose REST endpoints required by the assignment.
 
+## Deployment overview
+
+- **Backend API (NestJS)** – Render Web Service  
+  - Root directory: `apps/backend`  
+  - Build command: `bun install && bun run build`  
+  - Start command: `bun run start:prod`  
+  - Env vars: `MONGODB_URI` (MongoDB Atlas connection string).
+
+- **Database (MongoDB Atlas)**  
+  - Free cluster with database name `meeting-room`.  
+  - One application user with limited credentials.  
+  - Network Access: IP allowlist includes `0.0.0.0/0` so Render can connect.
+
+- **Frontend (React/Vite)** – Vercel  
+  - Root directory: `apps/web`  
+  - Build command: `bun install && bun run build`  
+  - Env vars: `VITE_API_URL` set to the Render backend URL (for example, `https://booking-ia2r.onrender.com`).
+
 ---
 
 # Turborepo starter
