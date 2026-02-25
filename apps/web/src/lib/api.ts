@@ -95,7 +95,7 @@ async function downloadCsv(path: string, userId: string, filename: string): Prom
   URL.revokeObjectURL(url);
 }
 
-function buildQueryString(params: Record<string, string | number | undefined>): string {
+function buildQueryString(params: object): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== "") search.set(k, String(v));

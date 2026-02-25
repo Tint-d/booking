@@ -1,14 +1,3 @@
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -17,7 +6,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { useCurrentUser } from "@/contexts/current-user";
 import { useUsersForLoginQuery } from "@/features/auth/hooks/auth";
 import {
@@ -26,7 +14,6 @@ import {
   useBookingsSummaryQuery,
   type Booking,
 } from "@/features/bookings/hooks/bookings";
-import { api } from "@/lib/api";
 import {
   flexRender,
   getCoreRowModel,
@@ -35,53 +22,17 @@ import {
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Search,
-  Trash2,
-} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useBookingContext } from "../booking-context";
-import CreateDialog from "../create-dialog";
+import { BulkDeleteDialog } from "./bulk-delete-dialog";
+import { BookingTablePagination } from "./booking-table-pagination";
+import { BookingTableSkeleton } from "./booking-table-skeleton";
+import { BookingTableToolbar } from "./booking-table-toolbar";
 import { getBookingColumns } from "./columns";
-
-const PAGE_SIZE = 10;
-const SORT_FIELDS = ["startTime", "endTime", "createdAt", "userId"] as const;
-
-type SummaryRow = { id: string; name: string; count: number };
-
-const SUMMARY_COLUMNS: ColumnDef<SummaryRow>[] = [
-  { id: "name", accessorKey: "name", header: "User" },
-  {
-    id: "count",
-    accessorKey: "count",
-    header: "Bookings",
-    cell: ({ getValue }) => (
-      <span className="block text-right">{getValue() as number}</span>
-    ),
-  },
-];
-
-function downloadSummaryCsv(rows: SummaryRow[], total: number) {
-  const header = ["User", "Bookings"];
-  const dataRows = rows.map((r) => [r.name, String(r.count)]);
-  const totalRow = ["Total", String(total)];
-  const csv = [header, ...dataRows, totalRow]
-    .map((row) =>
-      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
-    )
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "bookings-summary.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
+import { DeleteBookingDialog } from "./delete-booking-dialog";
+import { SUMMARY_COLUMNS } from "./summary-columns";
+import { PAGE_SIZE, SORT_FIELDS, type SortField, type SummaryRow } from "./table.constants";
 
 /**
  * Booking.Body.Table – Server-side pagination, search, filter, sort
@@ -100,10 +51,10 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const sortByRaw = sorting[0]?.id ?? (mode === "grouped" ? "userId" : "startTime");
-  const sortBy: (typeof SORT_FIELDS)[number] = SORT_FIELDS.includes(
-    sortByRaw as (typeof SORT_FIELDS)[number]
+  const sortBy: SortField = SORT_FIELDS.includes(
+    sortByRaw as SortField,
   )
-    ? (sortByRaw as (typeof SORT_FIELDS)[number])
+    ? (sortByRaw as SortField)
     : "startTime";
   const sortOrder = sorting[0]?.desc ? "desc" : "asc";
 
@@ -148,9 +99,7 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
     if (mode !== "summary") return [];
     const q = searchInput.trim().toLowerCase();
     if (!q) return summaryRows;
-    return summaryRows.filter((r) =>
-      r.name.toLowerCase().includes(q),
-    );
+    return summaryRows.filter((r) => r.name.toLowerCase().includes(q));
   }, [mode, summaryRows, searchInput]);
 
   useEffect(() => {
@@ -162,7 +111,6 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
     setPage(1);
   }, [searchSent, sortBy, sortOrder]);
 
-  // When the owner switches between views, reset sort + page.
   useEffect(() => {
     if (mode === "summary") return;
     setSorting([{ id: mode === "grouped" ? "userId" : "startTime", desc: false }]);
@@ -208,7 +156,7 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
   const tableData = mode === "summary" ? filteredSummaryRows : bookings;
   const tableColumns = mode === "summary" ? SUMMARY_COLUMNS : bookingColumns;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table; safe to suppress
   const table = useReactTable<Booking | SummaryRow>({
     data: tableData as (Booking | SummaryRow)[],
     columns: tableColumns as ColumnDef<Booking | SummaryRow>[],
@@ -225,7 +173,7 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
 
   const pageRows = table.getRowModel().rows;
   const selectedCount = Object.keys(rowSelection).filter(
-    (k) => rowSelection[k]
+    (k) => rowSelection[k],
   ).length;
   const summaryTotal = mode === "summary" ? summaryQuery.data?.totalBookings ?? 0 : 0;
 
@@ -236,12 +184,12 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
       return;
     }
     Promise.all(
-      ids.map((id) => deleteBooking.mutateAsync({ userId, bookingId: id }))
+      ids.map((id) => deleteBooking.mutateAsync({ userId, bookingId: id })),
     )
       .then(() => {
         toast.success(
           `${ids.length} booking${ids.length === 1 ? "" : "s"} deleted successfully.`,
-          { position: "top-right" }
+          { position: "top-right" },
         );
         setRowSelection({});
         setBulkDeleteOpen(false);
@@ -273,145 +221,36 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
   const isLoadingTable =
     mode === "summary" ? summaryQuery.isLoading : isLoading;
   if (isLoadingTable) {
-    const colCount = mode === "summary" ? 2 : 5;
-    return (
-      <div className="w-full space-y-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Skeleton className="h-9 w-full sm:max-w-xs sm:w-64" />
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-9 w-28" />
-          </div>
-        </div>
-        <TableSkeleton columnCount={colCount} rowCount={mode === "summary" ? 6 : 10} />
-        {mode !== "summary" && (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Skeleton className="h-5 w-40" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-8 w-20" />
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-8 w-14" />
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return <BookingTableSkeleton isSummary={mode === "summary"} />;
   }
 
   return (
     <div className="w-full space-y-4">
-      <Dialog
-        open={!!bookingToDelete}
-        onOpenChange={(open) => !open && setBookingToDelete(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete booking</DialogTitle>
-            <DialogDescription>
-              This will permanently remove this booking. This action cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBookingToDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteBooking}
-              disabled={deleteBooking.isPending}
-            >
-              {deleteBooking.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-          <Input
-            placeholder={
-              mode === "summary"
-                ? "Search by user name…"
-                : "Search by date, time or booking…"
-            }
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9 pr-4"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {mode !== "summary" && selectedCount > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setBulkDeleteOpen(true)}
-              className="gap-2"
-            >
-              <Trash2 className="size-4" />
-              Delete selected ({selectedCount})
-            </Button>
-          )}
-          <CreateDialog />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              if (mode === "summary") {
-                downloadSummaryCsv(filteredSummaryRows, summaryTotal);
-                return;
-              }
-              try {
-                await api.bookings.exportCsv(userId);
-                toast.success("CSV downloaded.", { position: "top-right" });
-              } catch (e) {
-                toast.error((e as Error).message ?? "Export failed.", {
-                  position: "top-right",
-                });
-              }
-            }}
-            className="gap-2"
-            title={
-              mode === "summary"
-                ? "Download summary as CSV"
-                : "Download all bookings as CSV (from server)"
-            }
-          >
-            <Download className="size-4" />
-            Download CSV
-          </Button>
-        </div>
-      </div>
+      <DeleteBookingDialog
+        booking={bookingToDelete}
+        onClose={() => setBookingToDelete(null)}
+        onConfirm={confirmDeleteBooking}
+        isDeleting={deleteBooking.isPending}
+      />
 
-      <Dialog
+      <BookingTableToolbar
+        mode={mode}
+        searchInput={searchInput}
+        onSearchChange={setSearchInput}
+        selectedCount={selectedCount}
+        onBulkDeleteClick={() => setBulkDeleteOpen(true)}
+        userId={userId}
+        filteredSummaryRows={filteredSummaryRows}
+        summaryTotal={summaryTotal}
+      />
+
+      <BulkDeleteDialog
         open={bulkDeleteOpen}
-        onOpenChange={(open) => !open && setBulkDeleteOpen(false)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete selected bookings</DialogTitle>
-            <DialogDescription>
-              This will permanently remove {selectedCount} booking
-              {selectedCount === 1 ? "" : "s"}. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setBulkDeleteOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmBulkDelete}
-              disabled={deleteBooking.isPending}
-            >
-              {deleteBooking.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setBulkDeleteOpen}
+        selectedCount={selectedCount}
+        onConfirm={confirmBulkDelete}
+        isDeleting={deleteBooking.isPending}
+      />
 
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -489,54 +328,17 @@ function BookingTable({ mode = "all" }: { mode?: "all" | "grouped" | "summary" }
         </Table>
       </div>
 
-      {mode !== "summary" && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-muted-foreground text-sm">
-            {selectedCount > 0 ? (
-              <>
-                <strong>{selectedCount}</strong> row(s) selected on this page.
-              </>
-            ) : (
-              <>
-                Showing{" "}
-                <strong>
-                  {meta?.total === 0
-                    ? 0
-                    : ((meta?.page ?? 1) - 1) * (meta?.limit ?? PAGE_SIZE) + 1}
-                  -
-                  {Math.min(
-                    (meta?.page ?? 1) * (meta?.limit ?? PAGE_SIZE),
-                    meta?.total ?? 0
-                  )}
-                </strong>{" "}
-                of <strong>{meta?.total ?? 0}</strong> bookings
-              </>
-            )}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={!meta?.hasPrevPage}
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </Button>
-            <span className="text-muted-foreground text-sm">
-              Page {meta?.page ?? 1} of {meta?.totalPages ?? 1}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!meta?.hasNextPage}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+      {mode !== "summary" && meta && (
+        <BookingTablePagination
+          selectedCount={selectedCount}
+          page={meta.page ?? 1}
+          total={meta.total ?? 0}
+          totalPages={meta.totalPages ?? 1}
+          hasPrevPage={meta.hasPrevPage ?? false}
+          hasNextPage={meta.hasNextPage ?? false}
+          onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
+          onNextPage={() => setPage((p) => p + 1)}
+        />
       )}
     </div>
   );
