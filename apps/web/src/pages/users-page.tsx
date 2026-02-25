@@ -1,3 +1,4 @@
+import { ReactHelmet, type ReactHelmetProps } from "@/components/molecules";
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ReactHelmet, type ReactHelmetProps } from "@/components/molecules";
 import { useCurrentUser } from "@/contexts/current-user";
 import { UsersTable } from "@/features/auth/components/users-table";
 import { useUsersQuery } from "@/features/auth/hooks/users";
@@ -26,9 +26,10 @@ export function UsersPage() {
   const usersQuery = useUsersQuery({
     userId: currentUser?.id ?? null,
     enabled: !!currentUser?.id && currentUser?.role === "admin",
+    limit: 10,
   });
 
-  const users = usersQuery.data ?? [];
+  const users = usersQuery.data?.data ?? [];
   const isLoading = usersQuery.isLoading;
   const error = usersQuery.error as Error | null;
 

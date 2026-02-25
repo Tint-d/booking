@@ -12,8 +12,23 @@ export interface Booking {
   createdAt: string;
 }
 
+export interface BookingsQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: "startTime" | "endTime" | "createdAt" | "userId";
+  sortOrder?: "asc" | "desc";
+  userId?: string;
+}
+
 export interface UseBookingsQueryParams {
   userId: string | null;
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: "startTime" | "endTime" | "createdAt" | "userId";
+  sortOrder?: "asc" | "desc";
+  userIdFilter?: string;
 }
 
 export interface CreateBookingVariables {

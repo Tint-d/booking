@@ -9,6 +9,8 @@ import { SortableHeader } from "./sortable-header";
 export function getBookingColumns(
   canDelete: (b: Booking) => boolean,
   onDelete: (b: Booking) => void,
+  getUserName: (userId: string) => string | undefined,
+  mode: "all" | "grouped" | "summary",
 ): ColumnDef<Booking>[] {
   return [
     {
@@ -37,6 +39,34 @@ export function getBookingColumns(
       },
       enableSorting: false,
       enableHiding: false,
+    },
+    {
+      accessorKey: "userId",
+      header: ({ column }) => (
+        <SortableHeader column={column} title="User" />
+      ),
+      cell: ({ row, table }) => {
+        const currentId = row.original.userId;
+        const name = getUserName(currentId) ?? currentId;
+
+        if (mode === "grouped") {
+          const allRows = table.getRowModel().rows;
+          const prev = allRows[row.index - 1];
+          const prevId = prev?.original.userId;
+          const isSameAsPrev = prev && prevId === currentId;
+
+          if (isSameAsPrev) {
+            return <span className="text-sm text-muted-foreground">&nbsp;</span>;
+          }
+        }
+
+        return <span className="text-sm">{name}</span>;
+      },
+      sortingFn: (rowA, rowB) => {
+        const nameA = getUserName(rowA.original.userId) ?? rowA.original.userId;
+        const nameB = getUserName(rowB.original.userId) ?? rowB.original.userId;
+        return nameA.localeCompare(nameB);
+      },
     },
     {
       accessorKey: "startTime",

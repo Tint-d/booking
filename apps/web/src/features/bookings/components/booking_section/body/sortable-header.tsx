@@ -1,14 +1,13 @@
 import { Button } from "@/components/ui/button";
 import ChevronUpDownIcon from "@/icons/chevron_updown.icon";
-import type { HeaderContext } from "@tanstack/react-table";
-import type { Booking } from "@/features/bookings/hooks/bookings";
+import type { Column } from "@tanstack/react-table";
 
-type SortableHeaderProps = {
-  column: HeaderContext<Booking, unknown>["column"];
+type SortableHeaderProps<TData = unknown> = {
+  column: Column<TData, unknown>;
   title: string;
 };
 
-export function SortableHeader({ column, title }: SortableHeaderProps) {
+export function SortableHeader<TData = unknown>({ column, title }: SortableHeaderProps<TData>) {
   const sorted = column.getIsSorted();
   const active =
     sorted === "asc" ? "up" : sorted === "desc" ? "down" : undefined;

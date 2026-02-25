@@ -7,8 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SortableHeader } from "@/features/bookings/components/booking_section/body/sortable-header";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Role, User } from "../hooks/users";
 
 const ROLES: Role[] = ["admin", "owner", "user"];
@@ -51,15 +52,7 @@ export function getUserColumns(
     {
       accessorKey: "name",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-8 font-medium"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-1 size-4" />
-        </Button>
+        <SortableHeader column={column} title="Name" />
       ),
       cell: ({ row }) => (
         <span className="font-medium">{row.original.name}</span>
@@ -69,7 +62,9 @@ export function getUserColumns(
     },
     {
       accessorKey: "role",
-      header: "Role",
+      header: ({ column }) => (
+        <SortableHeader column={column} title="Role" />
+      ),
       cell: ({ row }) => {
         const u = row.original;
         return (

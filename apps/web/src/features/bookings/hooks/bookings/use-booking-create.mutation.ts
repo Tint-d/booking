@@ -12,6 +12,7 @@ export function useBookingCreateMutation() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["bookings-summary"] });
     },
   });
 }

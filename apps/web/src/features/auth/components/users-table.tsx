@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { api } from "@/lib/api";
 import {
   flexRender,
   getCoreRowModel,
@@ -38,9 +43,12 @@ import {
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, Plus, Search, Trash2 } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronLeft, ChevronRight, Download, Plus, Search, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   useUserCreateMutation,
   useUserDeleteMutation,
@@ -51,6 +59,12 @@ import {
 import { getUserColumns } from "./user-columns";
 
 const ROLES: Role[] = ["admin", "owner", "user"];
+
+const addUserSchema = z.object({
+  name: z.string().min(1, { message: "Name is required." }),
+  role: z.enum(["admin", "owner", "user"]),
+});
+type AddUserFormValues = z.infer<typeof addUserSchema>;
 
 interface UsersTableProps {
   users: User[];
@@ -71,9 +85,12 @@ export function UsersTable({
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<Role>("user");
-  const [formError, setFormError] = useState<string | null>(null);
+
+  const addUserForm = useForm<AddUserFormValues>({
+    resolver: zodResolver(addUserSchema),
+    mode: "onTouched",
+    defaultValues: { name: "", role: "user" },
+  });
 
   const createUser = useUserCreateMutation();
   const updateRole = useUserUpdateRoleMutation();
@@ -119,13 +136,17 @@ export function UsersTable({
     [currentUser.id, canDelete, onDelete, onRoleChange, updateRole.isPending]
   );
 
+  // useReactTable uses interior mutability; React Compiler skips this component (see react.dev/reference/eslint-plugin-react-hooks/lints/incompatible-library)
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table API; safe to suppress
   const table = useReactTable({
     data: users,
     columns,
+    getRowId: (row) => row.id,
     state: { sorting, globalFilter, rowSelection },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
+    enableRowSelection: (row) => canDelete(row.original),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -196,31 +217,36 @@ export function UsersTable({
       });
   }, [currentUser.id, table, deleteUser]);
 
-  const handleCreate = useCallback(() => {
-    const n = name.trim();
-    if (!n) {
-      setFormError("Name is required");
-      return;
-    }
-    setFormError(null);
-    createUser.mutate(
-      { userId: currentUser.id, name: n, role },
-      {
-        onSuccess: () => {
-          setAddOpen(false);
-          setName("");
-          setRole("user");
-          toast.success("User created successfully.", {
-            position: "top-right",
-          });
-        },
-        onError: (e: Error) => {
-          setFormError(e.message);
-          toast.error(e.message, { position: "top-right" });
-        },
+  const handleAddUser = useCallback(
+    (data: AddUserFormValues) => {
+      const n = data.name.trim();
+      const nameLower = n.toLowerCase();
+      if (users.some((u) => u.name.trim().toLowerCase() === nameLower)) {
+        addUserForm.setError("name", {
+          type: "manual",
+          message: "A user with this name already exists.",
+        });
+        return;
       }
-    );
-  }, [currentUser.id, name, role, createUser]);
+      createUser.mutate(
+        { userId: currentUser.id, name: n, role: data.role },
+        {
+          onSuccess: () => {
+            addUserForm.reset({ name: "", role: "user" });
+            setAddOpen(false);
+            toast.success("User created successfully.", {
+              position: "top-right",
+            });
+          },
+          onError: (e: Error) => {
+            addUserForm.setError("root", { message: e.message });
+            toast.error(e.message, { position: "top-right" });
+          },
+        }
+      );
+    },
+    [users, createUser, currentUser.id, addUserForm]
+  );
 
   if (error) {
     return (
@@ -298,7 +324,35 @@ export function UsersTable({
               Delete selected ({selectedCount})
             </Button>
           )}
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await api.users.exportCsv(currentUser.id);
+                toast.success("CSV downloaded.", { position: "top-right" });
+              } catch (e) {
+                toast.error((e as Error).message ?? "Export failed.", {
+                  position: "top-right",
+                });
+              }
+            }}
+            className="gap-2"
+            title="Download all users as CSV"
+          >
+            <Download className="size-4" />
+            Download CSV
+          </Button>
+          <Dialog
+            open={addOpen}
+            onOpenChange={(open) => {
+              setAddOpen(open);
+              if (!open) {
+                addUserForm.reset({ name: "", role: "user" });
+                addUserForm.clearErrors();
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="size-4" />
@@ -312,40 +366,79 @@ export function UsersTable({
                   Create a new user and assign a role.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <label className="text-muted-foreground text-sm">Name</label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Display name"
+              <form
+                id="add-user-form"
+                onSubmit={addUserForm.handleSubmit(handleAddUser)}
+                className="grid gap-4 py-4"
+              >
+                <FieldGroup>
+                  <Controller
+                    name="name"
+                    control={addUserForm.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={!!fieldState.invalid}>
+                        <FieldLabel htmlFor="add-user-name">Name</FieldLabel>
+                        <Input
+                          {...field}
+                          id="add-user-name"
+                          placeholder="Display name"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-muted-foreground text-sm">Role</label>
-                  <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {formError && (
-                  <p className="text-destructive text-sm">{formError}</p>
+                  <Controller
+                    name="role"
+                    control={addUserForm.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={!!fieldState.invalid}>
+                        <FieldLabel htmlFor="add-user-role">Role</FieldLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger id="add-user-role">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLES.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
+                  />
+                </FieldGroup>
+                {addUserForm.formState.errors.root && (
+                  <p className="text-destructive text-sm">
+                    {addUserForm.formState.errors.root.message}
+                  </p>
                 )}
-              </div>
+              </form>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setAddOpen(false)}>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    addUserForm.reset({ name: "", role: "user" });
+                    addUserForm.clearErrors();
+                    setAddOpen(false);
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleCreate}
+                  type="submit"
+                  form="add-user-form"
                   disabled={createUser.isPending}
                 >
                   {createUser.isPending ? "Creating…" : "Create"}

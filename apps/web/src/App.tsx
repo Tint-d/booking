@@ -26,7 +26,11 @@ function AppLayout() {
     enabled: !!user?.id && user?.role === "admin",
   });
   const usersForSwitcher =
-    user?.role === "admin" ? (usersQuery.data ?? []) : user ? [user] : [];
+    user?.role === "admin"
+      ? (usersQuery.data?.data ?? [])
+      : user
+        ? [user]
+        : [];
 
   return (
     <div className="min-h-screen bg-background">

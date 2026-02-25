@@ -10,9 +10,24 @@ export interface User {
   role: Role;
 }
 
+export interface UsersQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: "name" | "role" | "createdAt";
+  sortOrder?: "asc" | "desc";
+  role?: Role;
+}
+
 export interface UseUsersQueryParams {
   userId: string | null;
   enabled: boolean;
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: "name" | "role" | "createdAt";
+  sortOrder?: "asc" | "desc";
+  role?: Role;
 }
 
 export interface CreateUserVariables {

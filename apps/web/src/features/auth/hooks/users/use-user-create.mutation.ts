@@ -12,6 +12,7 @@ export function useUserCreateMutation() {
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["users", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["users-for-login"] });
     },
   });
 }
