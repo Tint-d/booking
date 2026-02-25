@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { CurrentUserProvider, useCurrentUser } from "@/contexts/current-user";
 import { ThemeProvider } from "@/contexts/theme";
 import { useUsersForLoginQuery } from "@/features/auth/hooks/auth";
-import { useUsersQuery } from "@/features/auth/hooks/users";
 import { BookingsPage } from "@/pages/bookings-page";
 import { LoginPage } from "@/pages/login-page";
 import { SeedPage } from "@/pages/seed-page";
@@ -20,21 +19,9 @@ const defaultMetadata: ReactHelmetProps = {
 };
 
 function AppLayout() {
-  const { user } = useCurrentUser();
-  const usersQuery = useUsersQuery({
-    userId: user?.id ?? null,
-    enabled: !!user?.id && user?.role === "admin",
-  });
-  const usersForSwitcher =
-    user?.role === "admin"
-      ? (usersQuery.data?.data ?? [])
-      : user
-        ? [user]
-        : [];
-
   return (
     <div className="min-h-screen bg-background">
-      <Header users={usersForSwitcher} />
+      <Header />
       <main>
         <Routes>
           <Route path="/" element={<BookingsPage />} />
