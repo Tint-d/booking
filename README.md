@@ -29,7 +29,8 @@ This repository contains a small meeting room booking system with a NestJS backe
   - Root directory: `apps/backend`  
   - Build command: `bun install && bun run build`  
   - Start command: `bun run start:prod`  
-  - Env vars: `MONGODB_URI` (MongoDB Atlas connection string).
+  - Env vars: `MONGODB_URI` (MongoDB Atlas connection string), `FRONTEND_ORIGIN` (optional; set to your Vercel app URL, e.g. `https://booking-web-beta.vercel.app`, to allow that origin explicitly for CORS; comma-separated for multiple).  
+  - **Render free tier**: the service may sleep after ~15 min of no traffic; the first request can take 30–60+ seconds (cold start). If the app stays on "Loading…", wait a minute and refresh, or use a keep-alive service.
 
 - **Database (MongoDB Atlas)**  
   - Free cluster with database name `meeting-room`.  
