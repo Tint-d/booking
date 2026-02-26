@@ -35,7 +35,11 @@ function AppLayout() {
 
 function AppRoutes() {
   const { user } = useCurrentUser();
-  const { data: existingUsers = [], isLoading } = useUsersForLoginQuery(!user);
+  const {
+    data: existingUsers = [],
+    isLoading,
+    isError,
+  } = useUsersForLoginQuery(!user);
 
   if (user) return <AppLayout />;
 
@@ -43,6 +47,23 @@ function AppRoutes() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground text-sm">Loading…</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4">
+        <p className="text-destructive text-sm font-medium">
+          Cannot reach the server.
+        </p>
+        <p className="text-muted-foreground text-center text-sm">
+          Check that the backend is running and that{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            VITE_API_URL
+          </code>{" "}
+          points to it (e.g. in production, set this in Vercel and redeploy).
+        </p>
       </div>
     );
   }

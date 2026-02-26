@@ -6,5 +6,7 @@ export function useUsersForLoginQuery(enabled: boolean) {
     queryKey: ["users-for-login"],
     queryFn: () => api.listUsersForLogin(),
     enabled,
+    retry: 1,
+    retryDelay: 2000,
   });
 }
